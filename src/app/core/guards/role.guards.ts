@@ -1,0 +1,36 @@
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { AuthService } from '../auth/auth.service';
+
+export const ownerGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  if (auth.isAuthenticated() && auth.role() === 'OWNER') {
+    return true;
+  }
+  return router.createUrlTree(['/login']);
+};
+
+export const guestGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  if (auth.isAuthenticated() && auth.role() === 'GUEST') {
+    return true;
+  }
+  return router.createUrlTree(['/login']);
+};
+
+export const OwnerGuard = ownerGuard;
+export const GuestGuard = guestGuard;
+
+export const loginGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  if (!auth.isAuthenticated()) {
+    return true;
+  }
+  return router.createUrlTree([auth.role() === 'OWNER' ? '/owner' : '/guest']);
+};

@@ -1,0 +1,153 @@
+<app-shell
+  title="Guest portal"
+  subtitle="Stay details, rent ledger, and secure maintenance requests"
+  [email]="auth.email() ?? ''"
+  (logout)="logout()"
+>
+  @if (overview()?.rentReminderActive) {
+    <aside class="due-banner" role="status">
+      <strong>Rent reminder</strong>
+      <span>{{ overview()!.reminderMessage }}</span>
+    </aside>
+  }
+
+  @if (error()) {
+    <p class="form-error banner-error" role="alert">{{ error() }}</p>
+  }
+  @if (paymentMessage()) {
+    <p class="form-success" role="status">{{ paymentMessage() }}</p>
+  }
+
+  @if (overview(); as account) {
+    <section class="metric-grid">
+      <article class="metric-card">
+        <p class="metric-label">Assigned room</p>
+        <p class="metric-value">{{ account.roomNumber }}</p>
+      </article>
+      <article class="metric-card">
+        <p class="metric-label">Check-in date</p>
+        <p class="metric-value text-lg">{{ account.checkInDate | date: 'mediumDate' }}</p>
+      </article>
+      <article class="metric-card">
+        <p class="metric-label">Monthly rent</p>
+        <p class="metric-value">{{ money(account.monthlyRentRate) }}</p>
+      </article>
+    </section>
+  }
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Payment ledger</h2>
+        <p>Every billed month, amounts cleared, and remaining balance. Pay Now opens Razorpay UPI and cards.</p>
+      </div>
+    </div>
+
+    <div class="table-wrap hidden-mobile">
+      <table>
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Total bill</th>
+            <th>Paid</th>
+            <th>Pending</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (invoice of ledger(); track invoice.id) {
+            <tr>
+              <td>{{ monthName(invoice.billingMonth) }} {{ invoice.billingYear }}</td>
+              <td>{{ money(invoice.totalAmountDue) }}</td>
+              <td>{{ money(invoice.amountPaid) }}</td>
+              <td>{{ money(invoice.pendingBalance) }}</td>
+              <td><app-status-badge [label]="invoice.paymentStatus" [tone]="paymentTone(invoice.paymentStatus)" /></td>
+              <td>
+                @if (invoice.paymentStatus !== 'PAID') {
+                  <button type="button" class="primary-btn compact" (click)="payNow(invoice)" [disabled]="paying()">
+                    {{ paying() ? 'Opening…' : 'Pay now' }}
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-copy">No invoices yet.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-list show-mobile">
+      @for (invoice of ledger(); track invoice.id) {
+        <article class="data-card">
+          <div>
+            <h3>{{ monthName(invoice.billingMonth) }} {{ invoice.billingYear }}</h3>
+            <p>Total {{ money(invoice.totalAmountDue) }} · Paid {{ money(invoice.amountPaid) }}</p>
+            <p>Pending {{ money(invoice.pendingBalance) }}</p>
+            <app-status-badge [label]="invoice.paymentStatus" [tone]="paymentTone(invoice.paymentStatus)" />
+          </div>
+          @if (invoice.paymentStatus !== 'PAID') {
+            <button type="button" class="primary-btn compact" (click)="payNow(invoice)" [disabled]="paying()">
+              Pay now
+            </button>
+          }
+        </article>
+      } @empty {
+        <p class="empty-copy">No invoices yet.</p>
+      }
+    </div>
+  </section>
+
+  <section class="panel two-col">
+    <div>
+      <div class="panel-head">
+        <div>
+          <h2>Raise a concern</h2>
+          <p>Describe a maintenance or security issue. The owner desk is notified immediately.</p>
+        </div>
+      </div>
+      <form [formGroup]="concernForm" (ngSubmit)="submitConcern()" class="concern-form" novalidate>
+        <label class="field">
+          <span>Category</span>
+          <select formControlName="category">
+            @for (category of categories; track category) {
+              <option [value]="category">{{ category }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
+          <span>Description</span>
+          <textarea rows="5" formControlName="description" maxlength="2000" placeholder="At least 10 characters. Do not include ID numbers."></textarea>
+        </label>
+        @if (concernMessage()) {
+          <p class="form-success">{{ concernMessage() }}</p>
+        }
+        <button class="primary-btn" type="submit">Submit concern</button>
+      </form>
+    </div>
+
+    <div>
+      <div class="panel-head">
+        <div>
+          <h2>Concern history</h2>
+          <p>Live status updates from the owner desk.</p>
+        </div>
+      </div>
+      <div class="card-list">
+        @for (concern of concerns(); track concern.id) {
+          <article class="data-card">
+            <div>
+              <h3>{{ concern.category }}</h3>
+              <p>{{ concern.description }}</p>
+              <p>Updated {{ concern.updatedAt | date: 'medium' }}</p>
+            </div>
+            <app-status-badge [label]="concern.status" [tone]="concernTone(concern.status)" />
+          </article>
+        } @empty {
+          <p class="empty-copy">You have not raised any concerns yet.</p>
+        }
+      </div>
+    </div>
+  </section>
+</app-shell>

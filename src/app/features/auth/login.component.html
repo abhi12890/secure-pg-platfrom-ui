@@ -1,0 +1,64 @@
+<div class="login-page">
+  <section class="login-hero" aria-hidden="true">
+    <div class="hero-orb hero-orb-one"></div>
+    <div class="hero-orb hero-orb-two"></div>
+    <div class="hero-copy">
+      <p class="hero-kicker">High-privacy residences</p>
+      <h1>Secure PG Platform</h1>
+      <p>
+        Zero-trust access, encrypted resident records, and Razorpay rent collection
+        for owners and guests.
+      </p>
+      <ul class="hero-points">
+        <li>Field-level AES-256-GCM encryption</li>
+        <li>Role-isolated owner and guest portals</li>
+        <li>UPI Intent and domestic card payments</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="login-panel">
+    <div class="login-card">
+      <div class="brand-mark login-mark">PG</div>
+      <h2>Sign in</h2>
+      <p class="login-lede">Use your residence credentials. Sessions are stateless JWT.</p>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="login-form" novalidate>
+        <label class="field">
+          <span>Email</span>
+          <input type="email" formControlName="email" autocomplete="username" inputmode="email" />
+        </label>
+
+        <label class="field">
+          <span>Password</span>
+          <div class="password-row">
+            <input
+              [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password"
+              autocomplete="current-password"
+            />
+            <button type="button" class="text-btn" (click)="hidePassword.set(!hidePassword())">
+              {{ hidePassword() ? 'Show' : 'Hide' }}
+            </button>
+          </div>
+        </label>
+
+        @if (error()) {
+          <p class="form-error" role="alert">{{ error() }}</p>
+        }
+
+        <button class="primary-btn" type="submit" [disabled]="loading()">
+          {{ loading() ? 'Signing in…' : 'Continue securely' }}
+        </button>
+      </form>
+
+      <div class="demo-box">
+        <p>Demo access</p>
+        <div class="demo-actions">
+          <button type="button" class="ghost-btn" (click)="fillDemo('owner')">Owner portal</button>
+          <button type="button" class="ghost-btn" (click)="fillDemo('guest')">Guest portal</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

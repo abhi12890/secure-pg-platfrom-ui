@@ -1,0 +1,224 @@
+<app-shell
+  title="Owner desk"
+  subtitle="Live occupancy, collections, and resident operations"
+  [email]="auth.email() ?? ''"
+  (logout)="logout()"
+>
+  @if (actionError()) {
+    <p class="form-error banner-error" role="alert">{{ actionError() }}</p>
+  }
+
+  <section class="metric-grid">
+    <app-metric-card
+      label="Occupancy"
+      [value]="occupancyLabel()"
+      [hint]="metrics() ? metrics()!.occupiedRooms + ' of ' + metrics()!.totalRooms + ' rooms occupied' : 'Loading occupancy'"
+    />
+    <app-metric-card
+      label="Revenue this month"
+      [value]="money(metrics()?.revenueCollectedThisMonth)"
+      hint="Collected on paid invoices"
+      valueClass="text-emerald-600"
+    />
+    <app-metric-card
+      label="Pending dues"
+      [value]="money(metrics()?.totalPendingDues)"
+      hint="PENDING and PARTIAL balances"
+      valueClass="text-amber-600"
+    />
+    <app-metric-card
+      label="Open concerns"
+      [value]="'' + (metrics()?.openConcernsCount ?? 0)"
+      hint="Requires owner action"
+      valueClass="text-red-600"
+    />
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Live feed</h2>
+        <p>Payment confirmations and new resident concerns</p>
+      </div>
+    </div>
+    <div class="feed">
+      @for (item of notifications(); track item.id) {
+        <article class="feed-item">
+          <span class="feed-dot" [class.feed-dot-pay]="item.eventType === 'PAYMENT_SUCCESS'"></span>
+          <div>
+            <p>{{ item.message }}</p>
+            <time>{{ item.createdAt | date: 'medium' }}</time>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty-copy">No notifications yet. Payments and concerns appear here in real time.</p>
+      }
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Resident lifecycle</h2>
+        <p>Active stays and vacated history. Checkout releases room capacity.</p>
+      </div>
+      <div class="segmented" role="tablist">
+        <button type="button" [class.active]="residentTab() === 'active'" (click)="residentTab.set('active')">
+          Active ({{ activeResidents().length }})
+        </button>
+        <button type="button" [class.active]="residentTab() === 'inactive'" (click)="residentTab.set('inactive')">
+          Vacated ({{ inactiveResidents().length }})
+        </button>
+      </div>
+    </div>
+
+    @if (residentTab() === 'active') {
+      <div class="table-wrap hidden-mobile">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Room</th>
+              <th>Check-in</th>
+              <th>Rent</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (resident of activeResidents(); track resident.tenantProfileId) {
+              <tr>
+                <td>{{ resident.name }}</td>
+                <td>{{ resident.roomNumber }}</td>
+                <td>{{ resident.checkInDate | date: 'mediumDate' }}</td>
+                <td>{{ money(resident.monthlyRentRate) }}</td>
+                <td>
+                  <button type="button" class="warn-btn" (click)="deactivate(resident)">Mark vacated</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="empty-copy">No active residents.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="card-list show-mobile">
+        @for (resident of activeResidents(); track resident.tenantProfileId) {
+          <article class="data-card">
+            <div>
+              <h3>{{ resident.name }}</h3>
+              <p>Room {{ resident.roomNumber }} · {{ money(resident.monthlyRentRate) }}/mo</p>
+              <p>Checked in {{ resident.checkInDate | date: 'mediumDate' }}</p>
+            </div>
+            <button type="button" class="warn-btn" (click)="deactivate(resident)">Mark vacated</button>
+          </article>
+        } @empty {
+          <p class="empty-copy">No active residents.</p>
+        }
+      </div>
+    } @else {
+      <div class="table-wrap hidden-mobile">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Room</th>
+              <th>Check-out</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (resident of inactiveResidents(); track resident.tenantProfileId) {
+              <tr>
+                <td>{{ resident.name }}</td>
+                <td>{{ resident.roomNumber }}</td>
+                <td>{{ resident.checkOutDate | date: 'mediumDate' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3" class="empty-copy">No vacated history yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="card-list show-mobile">
+        @for (resident of inactiveResidents(); track resident.tenantProfileId) {
+          <article class="data-card">
+            <div>
+              <h3>{{ resident.name }}</h3>
+              <p>Room {{ resident.roomNumber }}</p>
+              <p>Checked out {{ resident.checkOutDate | date: 'mediumDate' }}</p>
+            </div>
+          </article>
+        } @empty {
+          <p class="empty-copy">No vacated history yet.</p>
+        }
+      </div>
+    }
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div>
+        <h2>Concerns desk</h2>
+        <p>Name, room, submission date, and priority with quick status toggles.</p>
+      </div>
+    </div>
+    <div class="table-wrap hidden-mobile">
+      <table>
+        <thead>
+          <tr>
+            <th>Resident</th>
+            <th>Room</th>
+            <th>Submitted</th>
+            <th>Priority</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (concern of concerns(); track concern.id) {
+            <tr>
+              <td>{{ concern.residentName }}</td>
+              <td>{{ concern.roomNumber }}</td>
+              <td>{{ concern.createdAt | date: 'mediumDate' }}</td>
+              <td><app-status-badge [label]="concern.priority" [tone]="priorityTone(concern.priority)" /></td>
+              <td><app-status-badge [label]="concern.status" [tone]="statusTone(concern.status)" /></td>
+              <td class="action-cell">
+                <button type="button" class="ghost-btn" (click)="setConcernStatus(concern, 'IN_PROGRESS')" [disabled]="concern.status !== 'OPEN'">
+                  In progress
+                </button>
+                <button type="button" class="primary-btn compact" (click)="setConcernStatus(concern, 'RESOLVED')" [disabled]="concern.status === 'RESOLVED'">
+                  Resolved
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="6" class="empty-copy">No concerns submitted.</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <div class="card-list show-mobile">
+      @for (concern of concerns(); track concern.id) {
+        <article class="data-card">
+          <div>
+            <h3>{{ concern.residentName }} · Room {{ concern.roomNumber }}</h3>
+            <p>{{ concern.createdAt | date: 'mediumDate' }} · {{ concern.category }}</p>
+            <div class="chip-row">
+              <app-status-badge [label]="concern.priority" [tone]="priorityTone(concern.priority)" />
+              <app-status-badge [label]="concern.status" [tone]="statusTone(concern.status)" />
+            </div>
+          </div>
+          <div class="action-stack">
+            <button type="button" class="ghost-btn" (click)="setConcernStatus(concern, 'IN_PROGRESS')" [disabled]="concern.status !== 'OPEN'">
+              In progress
+            </button>
+            <button type="button" class="primary-btn compact" (click)="setConcernStatus(concern, 'RESOLVED')" [disabled]="concern.status === 'RESOLVED'">
+              Resolved
+            </button>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty-copy">No concerns submitted.</p>
+      }
+    </div>
+  </section>
+</app-shell>
